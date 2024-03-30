@@ -32,7 +32,8 @@ contract Sender is ERC2771Context, ReentrancyGuard {
         nonReentrant
     {
         if (!isTrustedForwarder(msg.sender)) revert OnlyGelatoRelayERC2771();
-        if (sender == address(0) || receiver == address(0)) revert InvalidSenderAddress();
+        if (sender == address(0)) revert InvalidSenderAddress();
+        if (receiver == address(0)) revert InvalidReceiverAddress();
         if (amount <= 0) revert TransferAmountMustBeGreaterThanZero();
 
         // Allow relayer to send token on behaf of the owner
