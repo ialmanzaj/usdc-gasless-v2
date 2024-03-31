@@ -7,7 +7,7 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuar
 import { IEIP3009 } from "./utils/IEIP3009.sol";
 import { Authorization } from "./types/Authorization.sol";
 
-contract Sender is ERC2771Context, ReentrancyGuard {
+contract SenderForwarder is ERC2771Context {
     IEIP3009 public immutable token;
 
     error OnlyGelatoRelayERC2771();
@@ -22,24 +22,14 @@ contract Sender is ERC2771Context, ReentrancyGuard {
         token = IEIP3009(_token);
     }
 
-    function send(
-        address sender,
-        address receiver,
-        uint256 amount,
-        Authorization calldata _authorization
-    )
-        external
-        nonReentrant
-    {
-        if (!isTrustedForwarder(msg.sender)) revert OnlyGelatoRelayERC2771();
-        if (sender == address(0)) revert InvalidSenderAddress();
-        if (receiver == address(0)) revert InvalidReceiverAddress();
+    function send(address from, address to, uint256 amount, Authorization calldata _authorization) external {
+        if (from == address(0)) revert InvalidSenderAddress();
+        if (to == address(0)) revert InvalidReceiverAddress();
         if (amount <= 0) revert TransferAmountMustBeGreaterThanZero();
 
-        // Allow relayer to send token on behaf of the owner
-        token.receiveWithAuthorization(
-            sender,
-            address(this),
+        token.transferWithAuthorization(
+            from,
+            to,
             amount,
             _authorization.validAfter,
             _authorization.validBefore,
@@ -49,9 +39,6 @@ contract Sender is ERC2771Context, ReentrancyGuard {
             _authorization.s
         );
 
-        // Transfer an amount from one person to another
-        token.transferFrom(sender, receiver, amount);
-
-        emit TokenTransferred(sender, receiver, amount);
+        emit TokenTransferred(from, to, amount);
     }
 }
